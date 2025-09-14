@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --color-nuam-primary: #0A2463;
+  --color-nuam-secondary: #3E92CC;
+  --color-nuam-accent: #FF6B35;
+  --color-nuam-dark: #0F172A;
+  --color-nuam-card: #1E293B;
+  --color-nuam-border: #334155;
+  --color-nuam-text-primary: #F8FAFC;
+  --color-nuam-text-secondary: #94A3B8;
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-nuam-card/60 backdrop-blur-md border border-nuam-border/50 rounded-2xl p-6 shadow-xl;
+    transition: all 0.3s ease-in-out;
+  }
+
+  .btn-primary {
+    @apply bg-nuam-accent text-nuam-dark hover:bg-nuam-accent/90 font-semibold py-2 px-4 rounded-full transition-all duration-300 transform hover:scale-105;
+  }
+
+  .btn-secondary {
+    @apply bg-nuam-secondary text-nuam-dark hover:bg-nuam-secondary/90 font-semibold py-2 px-4 rounded-full transition-all duration-300;
+  }
+
+  .feature-card {
+    @apply bg-nuam-card/60 backdrop-blur-md border border-nuam-border/50 rounded-2xl p-6 shadow-xl transition-all duration-500 hover:shadow-2xl hover:border-nuam-accent/50;
+  }
+
+  /* Tus animaciones siguen igual */
+  .pulse-animation {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  .slide-in-left {
+    animation: slideInLeft 0.5s ease-out;
+  }
+
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-50px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
