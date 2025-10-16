@@ -13,6 +13,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { NUAM_LOGO_PATH } from './utils/paths'
 
 export default function Home() {
   // Estados para controlar la UI y animaciones
@@ -83,7 +84,7 @@ export default function Home() {
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center p-1 animate-glow">
               <Image 
-                src="/images/NuamLogo.jpg" 
+                src={NUAM_LOGO_PATH} 
                 alt="NUAM" 
                 width={40}
                 height={40}
@@ -191,7 +192,7 @@ export default function Home() {
                 Acceder al Sistema
               </Link>
               <button className="px-8 py-4 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl hover:bg-white/20 transition-all hover:border-white/40">
-                Ver Demo
+                Contactar al Administrador
               </button>
             </div>
           </div>

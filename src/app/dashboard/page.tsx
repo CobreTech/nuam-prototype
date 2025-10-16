@@ -14,9 +14,13 @@
  * - Uso de datos simulados (mock data) para demostración.
  */
 
-import { useState } from 'react' // Hook de React para gestionar el estado del componente.
+'use client'
+
+import { useState } from 'react'
+import Image from 'next/image'
+import { motion, AnimatePresence } from 'framer-motion'
+import { NUAM_LOGO_PATH } from '../utils/paths'
 import { useRouter } from 'next/navigation' // Hook de Next.js para la navegación programática.
-import Image from 'next/image' // Componente de Next.js para optimización de imágenes.
 
 // Importación de las sub-secciones del dashboard.
 import OverviewSection from './components/OverviewSection'
@@ -152,7 +156,7 @@ export default function Dashboard() {
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center p-1 animate-glow">
               <Image 
-                src="/images/NuamLogo.jpg" 
+                src={NUAM_LOGO_PATH} 
                 alt="NUAM" 
                 width={32}
                 height={32}
@@ -230,7 +234,7 @@ export default function Dashboard() {
             <div className="flex items-center space-x-2 mb-8">
               <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center p-1 animate-glow">
                 <Image 
-                  src="/images/NuamLogo.jpg" 
+                  src={NUAM_LOGO_PATH} 
                   alt="NUAM" 
                   width={32}
                   height={32}
