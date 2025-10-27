@@ -191,7 +191,10 @@ export default function Home() {
               >
                 Acceder al Sistema
               </Link>
-              <button className="px-8 py-4 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl hover:bg-white/20 transition-all hover:border-white/40">
+              <button 
+                className="px-8 py-4 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl hover:bg-white/20 transition-all hover:border-white/40"
+                type="button"
+              >
                 Contactar al Administrador
               </button>
             </div>
