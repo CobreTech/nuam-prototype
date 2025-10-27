@@ -16,11 +16,15 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { NUAM_LOGO_PATH } from '../utils/paths'
 import { useRouter } from 'next/navigation' // Hook de Next.js para la navegación programática.
+import RegisterModal from '../components/RegisterModal'
+import { auth, db } from '../firebase/config'
+import { onAuthStateChanged } from 'firebase/auth'
+import { doc, getDoc } from 'firebase/firestore'
 
 // Importación de las sub-secciones del dashboard.
 import OverviewSection from './components/OverviewSection'
@@ -47,6 +51,27 @@ export default function Dashboard() {
   const [dateFormat, setDateFormat] = useState('DD/MM/AAAA') // Formato de fecha preferido.
   const [decimalSeparator, setDecimalSeparator] = useState('coma') // Separador de decimales.
   const [pageSize, setPageSize] = useState(10) // Cantidad de elementos por página en las tablas.
+
+  // Estado para control de creación de usuarios por admin
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
+  const [currentRole, setCurrentRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const snap = await getDoc(doc(db, 'users', user.uid))
+          const rol = snap.exists() ? (snap.data() as any)?.rol : null
+          setCurrentRole(rol ?? null)
+        } catch {
+          setCurrentRole(null)
+        }
+      } else {
+        setCurrentRole(null)
+      }
+    })
+    return () => unsub()
+  }, [])
 
   // Define los elementos del menú de navegación.
   const menuItems: MenuItem[] = [
@@ -286,6 +311,16 @@ export default function Dashboard() {
               Bienvenido, Corredor
             </h1>
             <p className="text-gray-400 text-sm lg:text-base">Sistema de Gestión de Calificaciones Tributarias</p>
+            {currentRole === 'Administrador' && (
+              <div className="mt-4">
+                <button
+                  onClick={() => setShowRegisterModal(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all"
+                >
+                  Crear Usuario
+                </button>
+              </div>
+            )}
           </header>
 
           {/* Tarjetas de estadísticas rápidas */}
@@ -313,6 +348,9 @@ export default function Dashboard() {
           <div key={activeTab} className="animate-slideIn">
             {renderMainContent()} {/* Llama a la función que renderiza la sección activa. */}
           </div>
+          {showRegisterModal && (
+            <RegisterModal open={showRegisterModal} onClose={() => setShowRegisterModal(false)} />
+          )}
         </main>
       </div>
 
