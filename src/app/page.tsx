@@ -63,7 +63,7 @@ export default function Home() {
         
         {/* Partículas flotantes - Generan 20 puntos animados aleatoriamente */}
         <div className="absolute inset-0">
-          {[...Array(20)].map((_, i) => (
+          {mounted &&[...Array(20)].map((_, i) => (
             <div
               key={i}
               className="absolute w-1 h-1 bg-orange-400 rounded-full animate-float"
