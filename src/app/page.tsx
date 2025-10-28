@@ -14,12 +14,14 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { NUAM_LOGO_PATH } from './utils/paths'
+import RegisterModal from './components/RegisterModal'
 
 export default function Home() {
   // Estados para controlar la UI y animaciones
   const [mounted, setMounted] = useState(false) // Controla si el componente ya se montó
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false) // Estado del menú móvil
   const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set()) // Secciones visibles para animaciones
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
   
   // Referencias para el observer de intersección
   const featuresRef = useRef<HTMLElement>(null)
@@ -191,8 +193,12 @@ export default function Home() {
               >
                 Acceder al Sistema
               </Link>
-              <button className="px-8 py-4 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl hover:bg-white/20 transition-all hover:border-white/40">
-                Contactar al Administrador
+              <button
+                type="button"
+                onClick={() => setShowRegisterModal(true)}
+                className="px-8 py-4 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl hover:bg-white/20 transition-all hover:border-white/40 text-center"
+              >
+                Registrar Usuario
               </button>
             </div>
           </div>
@@ -205,6 +211,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {showRegisterModal && (
+        <RegisterModal open={showRegisterModal} onClose={() => setShowRegisterModal(false)} />
+      )}
 
       {/* Sección de características - Muestra las funcionalidades principales */}
       <section 

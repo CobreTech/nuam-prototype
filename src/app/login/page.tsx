@@ -1,15 +1,17 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { NUAM_LOGO_PATH } from '../utils/paths'
 import { auth } from '../firebase/config'
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
+import RegisterModal from '../components/RegisterModal'
 
 export default function Login() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   // Estados para el formulario de login
   const [email, setEmail] = useState('')
@@ -24,6 +26,7 @@ export default function Login() {
   const [resetLoading, setResetLoading] = useState(false)
   const [resetSent, setResetSent] = useState(false)
   const [resetError, setResetError] = useState('')
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,6 +66,12 @@ export default function Login() {
     setResetSent(false)
     setResetError('')
   }
+
+  // Auto-abrir modal de registro con ?register=1
+  useEffect(() => {
+    const shouldOpen = searchParams?.get('register') === '1'
+    if (shouldOpen) setShowRegisterModal(true)
+  }, [searchParams])
 
   console.log("apiKey exists?", !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
 
@@ -113,13 +122,17 @@ export default function Login() {
           </button>
           <div className="text-center pt-4 border-t border-white/10">
             <span className="text-gray-400">¿No tienes cuenta? </span>
-            <Link href="#" className="text-orange-400 hover:text-orange-300">Contacta al administrador</Link>
+            <button type="button" onClick={() => setShowRegisterModal(true)} className="text-orange-400 hover:text-orange-300 bg-transparent border-none p-0 cursor-pointer">Registrarse</button>
           </div>
         </form>
         <div className="text-center mt-8">
           <Link href="/" className="text-gray-400 hover:text-white transition-colors">← Volver al inicio</Link>
         </div>
       </div>
+
+      {showRegisterModal && (
+        <RegisterModal open={showRegisterModal} onClose={() => setShowRegisterModal(false)} />
+      )}
 
       {/* Modal para Restablecer Contraseña */}
       {showForgotPasswordModal && (

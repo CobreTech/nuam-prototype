@@ -47,6 +47,7 @@ export default function Dashboard() {
   const [dateFormat, setDateFormat] = useState('DD/MM/AAAA') // Formato de fecha preferido.
   const [decimalSeparator, setDecimalSeparator] = useState('coma') // Separador de decimales.
   const [pageSize, setPageSize] = useState(10) // Cantidad de elementos por página en las tablas.
+  //
 
   // Define los elementos del menú de navegación.
   const menuItems: MenuItem[] = [
