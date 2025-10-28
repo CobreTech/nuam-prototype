@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -9,7 +9,7 @@ import { auth } from '../firebase/config'
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import RegisterModal from '../components/RegisterModal'
 
-export default function Login() {
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -179,5 +179,13 @@ export default function Login() {
         .animation-delay-4000 { animation-delay: 4s; }
       `}</style>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
   )
 }
