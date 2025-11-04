@@ -1,124 +1,313 @@
 'use client'
 
 /**
- * Componente UploadSection (Sección de Carga Masiva)
+ * Componente UploadSection (Sección de Carga Masiva) - 100% Funcional
  * 
- * Gestiona la subida de archivos de calificaciones. Permite a los usuarios seleccionar
- * un archivo desde su equipo o arrastrarlo y soltarlo en un área designada.
+ * Implementa RF-01: Carga masiva de datos tributarios
+ * Implementa RF-02: Resumen de carga masiva
+ * Implementa RF-03: Validación automática de factores
  * 
  * Funcionalidades:
- * - Carga de archivos mediante un input o drag-and-drop.
- * - Validación del tamaño del archivo (máximo 10MB) y tipo (CSV, XLSX).
- * - Simulación de lectura y previsualización del contenido del archivo.
- * - Muestra un resumen de los datos a procesar (agregados, actualizados, errores).
- * - Permite remover el archivo seleccionado para empezar de nuevo.
- *
- * @param {UploadSectionProps} props - Propiedades para manejar el estado de los archivos.
+ * - Carga de archivos CSV/XLSX mediante input o drag-and-drop
+ * - Procesamiento real de archivos con validación de datos
+ * - Vista previa de registros antes de guardar
+ * - Guardado en Firestore con detección de duplicados
+ * - Resumen detallado con errores y éxitos
  */
 
-import { useRef } from 'react' // Hook de React para acceder a elementos del DOM.
-import { FilePreview } from './types' // Importa los tipos de datos necesarios.
+import { useRef, useState } from 'react'
+import { FilePreview, BulkUploadResult, ValidationError, ProcessedRecord } from './types'
+import { processFile, downloadTemplateCSV } from '../../services/fileProcessingService'
+import { processBulkUpload } from '../../services/firestoreService'
 
-// Define la interfaz de las propiedades que el componente necesita.
 interface UploadSectionProps {
-  selectedFile: File | null; // El archivo que ha sido seleccionado por el usuario.
-  setSelectedFile: (file: File | null) => void; // Función para actualizar el archivo seleccionado.
-  filePreview: FilePreview | null; // Objeto con los datos para la vista previa del archivo.
-  setFilePreview: (preview: FilePreview | null) => void; // Función para actualizar la vista previa.
+  brokerId?: string; // ID del corredor actual (se obtendría del contexto de autenticación)
 }
 
-// Exporta el componente funcional UploadSection.
-export default function UploadSection({ 
-  selectedFile, 
-  setSelectedFile, 
-  filePreview, 
-  setFilePreview 
-}: UploadSectionProps) {
-  // Referencia al input de tipo 'file' para poder activarlo programáticamente.
+export default function UploadSection({ brokerId = 'broker-demo-001' }: UploadSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreview, setFilePreview] = useState<FilePreview | null>(null)
+  const [processedRecords, setProcessedRecords] = useState<ProcessedRecord[]>([])
+  const [uploadResult, setUploadResult] = useState<BulkUploadResult | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [currentStep, setCurrentStep] = useState<'select' | 'preview' | 'result'>('select')
+  const [error, setError] = useState<string | null>(null)
+  const [showTemplateMenu, setShowTemplateMenu] = useState(false)
+  
+  // Estados para barra de progreso
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadPhase, setUploadPhase] = useState('')
+  const [uploadSpeed, setUploadSpeed] = useState(0)
+  const [startTime, setStartTime] = useState(0)
 
-  // --- MANEJADORES DE EVENTOS ---
+  /**
+   * Procesa el archivo seleccionado y genera la vista previa
+   */
+  const handleFileProcess = async (file: File) => {
+    setIsProcessing(true)
+    setError(null)
 
-  // Se activa cuando un usuario selecciona un archivo a través del diálogo del sistema.
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      // Valida el tamaño del archivo.
-      if (file.size > 10 * 1024 * 1024) { // Límite de 10MB
-        alert('El archivo es demasiado grande. Máximo 10MB.')
-        return
+    try {
+      // Procesar el archivo usando el servicio
+      const records = await processFile(file, brokerId)
+      setProcessedRecords(records)
+
+      // Calcular estadísticas para la vista previa
+      const successRecords = records.filter(r => r.status === 'success' || r.status === 'updated')
+      const errorRecords = records.filter(r => r.status === 'error')
+      const toBeUpdated = records.filter(r => r.isDuplicate).length
+      const toBeAdded = successRecords.length - toBeUpdated
+
+      // Generar vista previa con TODOS los registros exitosos (con scroll)
+      const previewData = successRecords.map(record => {
+        if (!record.data) return []
+        return [
+          record.data.instrument,
+          record.data.market,
+          record.data.period,
+          record.data.qualificationType,
+          record.data.amount.toString()
+        ]
+      })
+
+      const preview: FilePreview = {
+        fileName: file.name,
+        size: file.size,
+        rows: records.length,
+        columns: ['Instrumento', 'Mercado', 'Período', 'Tipo', 'Monto'],
+        preview: previewData,
+        summary: {
+          added: toBeAdded,
+          updated: toBeUpdated,
+          errors: errorRecords.length
+        },
+        validationErrors: errorRecords.flatMap(r => r.errors).slice(0, 10) // Primeros 10 errores
       }
-      setSelectedFile(file)
-      
-      // Simula la lectura y generación de una vista previa del archivo.
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const mockPreview: FilePreview = {
-          fileName: file.name,
-          size: file.size,
-          rows: 150,
-          columns: ['Instrumento', 'Mercado', 'Período', 'F8', 'F9', 'F10', 'Monto'],
-          preview: [
-            ['Acción ABC', 'BVC', '2024-Q1', '0.85', '0.90', '0.88', '15000'],
-            ['Bono XYZ', 'COLCAP', '2024-Q1', '0.92', '0.89', '0.91', '25000'],
-            ['ETF 123', 'BVC', '2024-Q1', '0.78', '0.82', '0.80', '8500']
-          ],
-          summary: { added: 120, updated: 25, errors: 5 }
-        }
-        setFilePreview(mockPreview)
-      }
-      reader.readAsText(file) // Inicia la lectura (aunque el resultado no se usa en la simulación).
+
+      setFilePreview(preview)
+      setCurrentStep('preview')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al procesar el archivo'
+      setError(errorMessage)
+      console.error('Error procesando archivo:', err)
+    } finally {
+      setIsProcessing(false)
     }
   }
 
-  // Previene el comportamiento por defecto del navegador cuando se arrastra un archivo sobre el área.
+  /**
+   * Maneja la selección de archivo desde el diálogo
+   */
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setError('El archivo es demasiado grande. Máximo 10MB.')
+        return
+      }
+      setSelectedFile(file)
+      handleFileProcess(file)
+    }
+  }
+
+  /**
+   * Maneja el drag-and-drop
+   */
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
   }
 
-  // Se activa cuando un usuario suelta un archivo en el área designada.
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     const files = e.dataTransfer.files
     if (files.length > 0) {
       const file = files[0]
-      // Valida el tipo de archivo.
-      if (file.type === 'text/csv' || file.name.endsWith('.xlsx')) {
-        // Valida el tamaño del archivo.
+      if (file.type === 'text/csv' || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
         if (file.size > 10 * 1024 * 1024) {
-          alert('El archivo es demasiado grande. Máximo 10MB.')
+          setError('El archivo es demasiado grande. Máximo 10MB.')
           return
         }
         setSelectedFile(file)
-        
-        // Simula la generación de la vista previa (igual que en handleFileSelect).
-        const mockPreview: FilePreview = {
-          fileName: file.name,
-          size: file.size,
-          rows: 150,
-          columns: ['Instrumento', 'Mercado', 'Período', 'F8', 'F9', 'F10', 'Monto'],
-          preview: [
-            ['Acción ABC', 'BVC', '2024-Q1', '0.85', '0.90', '0.88', '15000'],
-            ['Bono XYZ', 'COLCAP', '2024-Q1', '0.92', '0.89', '0.91', '25000'],
-            ['ETF 123', 'BVC', '2024-Q1', '0.78', '0.82', '0.80', '8500']
-          ],
-          summary: { added: 120, updated: 25, errors: 5 }
-        }
-        setFilePreview(mockPreview)
+        handleFileProcess(file)
       } else {
-        alert('Solo se aceptan archivos CSV y XLSX')
+        setError('Solo se aceptan archivos CSV y XLSX')
       }
     }
   }
 
+  /**
+   * Procesa y guarda los datos en Firestore con reporte de progreso
+   * RF-01: Carga masiva con actualización de duplicados
+   */
+  const handleConfirmUpload = async () => {
+    if (!processedRecords.length) return
+
+    setIsUploading(true)
+    setError(null)
+    setUploadProgress(0)
+    setStartTime(Date.now())
+
+    try {
+      // Callback de progreso en tiempo real
+      const onProgress = (current: number, total: number, phase: string) => {
+        const percentage = Math.round((current / total) * 100)
+        setUploadProgress(percentage)
+        setUploadPhase(phase)
+        
+        // Calcular velocidad (registros/segundo)
+        const elapsed = (Date.now() - startTime) / 1000
+        const speed = elapsed > 0 ? Math.round(current / elapsed) : 0
+        setUploadSpeed(speed)
+      }
+
+      const result = await processBulkUpload(processedRecords, brokerId, onProgress)
+      setUploadResult(result)
+      setCurrentStep('result')
+      
+      // Recargar estadísticas después de completar (mejora #3)
+      if (typeof window !== 'undefined') {
+        // Disparar evento personalizado para que el dashboard recargue las estadísticas
+        window.dispatchEvent(new Event('reloadBrokerStats'))
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al guardar los datos'
+      setError(errorMessage)
+      console.error('Error guardando datos:', err)
+    } finally {
+      setIsUploading(false)
+      setUploadProgress(0)
+      setUploadPhase('')
+    }
+  }
+
+  /**
+   * Exporta errores a CSV (mejora #2)
+   */
+  const handleExportErrors = () => {
+    if (!uploadResult || !uploadResult.errorRecords.length) return
+
+    // Generar CSV con los errores
+    let csvContent = 'Fila,Campo,Error,Valor\n'
+    
+    uploadResult.errorRecords.forEach(record => {
+      record.errors.forEach(error => {
+        const row = `${error.row},"${error.field}","${error.message}","${error.value || ''}"\n`
+        csvContent += row
+      })
+    })
+
+    // Descargar archivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `errores_carga_${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  /**
+   * Reinicia el proceso de carga
+   */
+  const handleReset = () => {
+    setSelectedFile(null)
+    setFilePreview(null)
+    setProcessedRecords([])
+    setUploadResult(null)
+    setCurrentStep('select')
+    setError(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  /**
+   * Descarga una plantilla específica
+   */
+  const handleDownloadTemplate = (templateType: 'normal' | 'errors' | '5000') => {
+    let fileName = '';
+    
+    switch (templateType) {
+      case 'normal':
+        fileName = 'plantilla_carga_masiva.csv';
+        break;
+      case 'errors':
+        fileName = 'plantilla_con_errores.csv';
+        break;
+      case '5000':
+        fileName = 'plantilla_5000_registros.csv';
+        break;
+    }
+    
+    // Crear un link temporal para descargar el archivo desde /public/plantillas
+    const link = document.createElement('a');
+    link.href = `/plantillas/${fileName}`;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setShowTemplateMenu(false);
+  }
+
   return (
     <div className="space-y-4 lg:space-y-6">
-      <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 lg:p-6">
-        <h2 className="text-lg lg:text-xl font-bold mb-4 lg:mb-6">Carga Masiva de Calificaciones</h2>
-        
-        {/* Renderizado condicional: muestra la zona de carga o la vista previa del archivo. */}
-        {!selectedFile ? (
-          // --- ZONA DE CARGA DE ARCHIVOS ---
+      {/* Paso 1: Selección de archivo */}
+      {currentStep === 'select' && (
+        <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 lg:p-6">
+          <div className="flex justify-between items-center mb-4 lg:mb-6">
+            <h2 className="text-lg lg:text-xl font-bold">Carga Masiva de Calificaciones</h2>
+            
+            {/* Dropdown de Plantillas */}
+            <div className="relative">
+              <button
+                onClick={() => setShowTemplateMenu(!showTemplateMenu)}
+                className="text-xs lg:text-sm px-3 py-2 bg-blue-600/20 border border-blue-500/50 rounded-lg hover:bg-blue-600/30 transition-all flex items-center gap-2"
+              >
+                📥 Descargar Plantilla
+                <span className="text-xs">▼</span>
+              </button>
+              
+              {showTemplateMenu && (
+                <div className="absolute right-0 mt-2 w-64 bg-slate-900/95 backdrop-blur-xl border border-white/20 rounded-xl shadow-xl z-50 overflow-hidden">
+                  <button
+                    onClick={() => handleDownloadTemplate('normal')}
+                    className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors border-b border-white/10"
+                  >
+                    <div className="font-semibold text-sm">📄 Plantilla Normal</div>
+                    <div className="text-xs text-gray-400">8 registros de ejemplo</div>
+                  </button>
+                  
+                  <button
+                    onClick={() => handleDownloadTemplate('errors')}
+                    className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors border-b border-white/10"
+                  >
+                    <div className="font-semibold text-sm">⚠️ Plantilla con Errores</div>
+                    <div className="text-xs text-gray-400">15 registros para probar validaciones</div>
+                  </button>
+                  
+                  <button
+                    onClick={() => handleDownloadTemplate('5000')}
+                    className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors"
+                  >
+                    <div className="font-semibold text-sm">🚀 Plantilla 5,000 Registros</div>
+                    <div className="text-xs text-gray-400">Prueba de rendimiento (0.67 MB)</div>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Cerrar dropdown al hacer clic fuera */}
+          {showTemplateMenu && (
+            <div 
+              className="fixed inset-0 z-40" 
+              onClick={() => setShowTemplateMenu(false)}
+            />
+          )}
+          
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
@@ -127,105 +316,263 @@ export default function UploadSection({
             <div className="text-4xl lg:text-6xl mb-4">📤</div>
             <h3 className="text-base lg:text-lg font-semibold mb-2">Arrastra tu archivo aquí</h3>
             <p className="text-gray-400 mb-4 text-sm lg:text-base">o haz clic para seleccionar</p>
-            {/* Input oculto que se activa con el botón. */}
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.xlsx"
+              accept=".csv,.xlsx,.xls"
               onChange={handleFileSelect}
               className="hidden"
               aria-label="Seleccionar archivo"
             />
             <button
-              onClick={() => fileInputRef.current?.click()} // Activa el input de archivo.
-              className="px-4 lg:px-6 py-2 lg:py-3 bg-gradient-to-r from-orange-600 to-amber-600 rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm lg:text-base"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isProcessing}
+              className="px-4 lg:px-6 py-2 lg:py-3 bg-gradient-to-r from-orange-600 to-amber-600 rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm lg:text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Seleccionar Archivo
+              {isProcessing ? 'Procesando...' : 'Seleccionar Archivo'}
             </button>
-            <p className="text-xs lg:text-xs text-gray-500 mt-4">Formatos soportados: CSV, XLSX (máx. 10MB)</p>
+            <p className="text-xs lg:text-xs text-gray-500 mt-4">
+              Formatos soportados: CSV, XLSX (máx. 10MB)
+            </p>
+
           </div>
-        ) : (
-          // --- VISTA PREVIA DEL ARCHIVO CARGADO ---
-          <div className="space-y-4 lg:space-y-6">
-            {/* Información del archivo seleccionado */}
-            <div className="bg-white/10 rounded-xl p-3 lg:p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-sm lg:text-base">{selectedFile.name}</h4>
-                  <p className="text-xs lg:text-sm text-gray-400">{(selectedFile.size / 1024).toFixed(1)} KB</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setSelectedFile(null)
-                    setFilePreview(null)
-                  }} // Limpia el estado para volver a la zona de carga.
-                  className="text-red-400 hover:text-red-300 focus:outline-none text-lg lg:text-xl"
-                  aria-label="Remover archivo"
-                >
-                  ✕
-                </button>
+
+          {error && (
+            <div className="mt-4 p-4 bg-red-500/20 border border-red-500/50 rounded-xl">
+              <p className="text-red-300 text-sm">❌ {error}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Paso 2: Vista previa y confirmación */}
+      {currentStep === 'preview' && filePreview && (
+        <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 lg:p-6">
+          <h2 className="text-lg lg:text-xl font-bold mb-4 lg:mb-6">Vista Previa y Validación</h2>
+          
+          {/* Información del archivo */}
+          <div className="bg-white/10 rounded-xl p-3 lg:p-4 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-semibold text-sm lg:text-base">{filePreview.fileName}</h4>
+                <p className="text-xs lg:text-sm text-gray-400">
+                  {(filePreview.size / 1024).toFixed(1)} KB • {filePreview.rows} registros
+                </p>
+              </div>
+              <button
+                onClick={handleReset}
+                className="text-red-400 hover:text-red-300 focus:outline-none text-lg lg:text-xl"
+                aria-label="Cancelar"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Resumen de validación */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-4 mb-4">
+            <div className="bg-green-500/20 border border-green-500/50 rounded-xl p-3 lg:p-4">
+              <div className="text-xl lg:text-2xl font-bold text-green-400">{filePreview.summary.added}</div>
+              <div className="text-xs lg:text-sm text-green-300">Nuevos Registros</div>
+            </div>
+            <div className="bg-blue-500/20 border border-blue-500/50 rounded-xl p-3 lg:p-4">
+              <div className="text-xl lg:text-2xl font-bold text-blue-400">{filePreview.summary.updated}</div>
+              <div className="text-xs lg:text-sm text-blue-300">Actualizaciones</div>
+            </div>
+            <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-3 lg:p-4">
+              <div className="text-xl lg:text-2xl font-bold text-red-400">{filePreview.summary.errors}</div>
+              <div className="text-xs lg:text-sm text-red-300">Errores</div>
+            </div>
+          </div>
+
+          {/* Vista previa de datos válidos */}
+          {filePreview.preview.length > 0 && (
+            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-xl p-3 lg:p-4 mb-4">
+              <h4 className="font-semibold mb-3 lg:mb-4 text-sm lg:text-base flex items-center justify-between">
+                <span>Vista Previa Completa</span>
+                <span className="text-xs font-normal text-gray-400">
+                  {filePreview.preview.length} registros válidos de {filePreview.rows} totales
+                </span>
+              </h4>
+              <div className="overflow-x-auto overflow-y-auto max-h-96 border border-white/10 rounded-lg">
+                <table className="w-full text-xs lg:text-sm min-w-[500px]">
+                  <thead className="sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
+                    <tr className="border-b border-white/10">
+                      <th className="text-left py-2 px-2 lg:px-3 text-gray-400 bg-slate-900/95">#</th>
+                      {filePreview.columns.map((col, i) => (
+                        <th key={i} className="text-left py-2 px-2 lg:px-3 bg-slate-900/95">{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filePreview.preview.map((row, i) => (
+                      <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td className="py-2 px-2 lg:px-3 text-gray-500 font-mono">{i + 1}</td>
+                        {row.map((cell, j) => (
+                          <td key={j} className="py-2 px-2 lg:px-3">{cell}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex items-center justify-between mt-2 text-xs text-gray-400">
+                <span>↕️ Usa scroll para ver todos los registros</span>
+                <span className="font-semibold text-blue-400">
+                  Mostrando {filePreview.preview.length} filas válidas completas
+                </span>
               </div>
             </div>
+          )}
 
-            {/* Solo se muestra si la vista previa ha sido generada. */}
-            {filePreview && (
-              <>
-                {/* Tabla de Vista Previa */}
-                <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-xl p-3 lg:p-4">
-                  <h4 className="font-semibold mb-3 lg:mb-4 text-sm lg:text-base">Vista Previa</h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs lg:text-sm min-w-[500px]">
-                      <thead>
-                        <tr className="border-b border-white/10">
-                          {filePreview.columns.map((col: string, i: number) => (
-                            <th key={i} className="text-left py-2 px-2 lg:px-3">{col}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filePreview.preview.map((row: string[], i: number) => (
-                          <tr key={i} className="border-b border-white/5">
-                            {row.map((cell: string, j: number) => (
-                              <td key={j} className="py-2 px-2 lg:px-3">{cell}</td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+          {/* Errores de validación */}
+          {filePreview.validationErrors && filePreview.validationErrors.length > 0 && (
+            <div className="backdrop-blur-xl bg-red-500/10 border border-red-500/30 rounded-xl p-3 lg:p-4 mb-4">
+              <h4 className="font-semibold mb-3 text-sm lg:text-base text-red-300">
+                ⚠️ Errores de Validación (primeros 10)
+              </h4>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {filePreview.validationErrors.map((error, i) => (
+                  <div key={i} className="text-xs bg-black/30 rounded p-2">
+                    <span className="text-red-400 font-semibold">Fila {error.row}:</span>
+                    <span className="text-gray-300 ml-2">{error.field} - {error.message}</span>
                   </div>
-                </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                {/* Resumen de la validación */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-4">
-                  <div className="bg-green-500/20 border border-green-500/50 rounded-xl p-3 lg:p-4">
-                    <div className="text-xl lg:text-2xl font-bold text-green-400">{filePreview.summary.added}</div>
-                    <div className="text-xs lg:text-sm text-green-300">Agregados</div>
-                  </div>
-                  <div className="bg-blue-500/20 border border-blue-500/50 rounded-xl p-3 lg:p-4">
-                    <div className="text-xl lg:text-2xl font-bold text-blue-400">{filePreview.summary.updated}</div>
-                    <div className="text-xs lg:text-sm text-blue-300">Actualizados</div>
-                  </div>
-                  <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-3 lg:p-4">
-                    <div className="text-xl lg:text-2xl font-bold text-red-400">{filePreview.summary.errors}</div>
-                    <div className="text-xs lg:text-sm text-red-300">Errores</div>
-                  </div>
-                </div>
+          {/* Barra de Progreso (mejora #1) */}
+          {isUploading && (
+            <div className="backdrop-blur-xl bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-blue-300">{uploadPhase}</span>
+                <span className="text-xs text-gray-400">{uploadProgress}%</span>
+              </div>
+              
+              {/* Barra de progreso */}
+              <div className="w-full bg-gray-700 rounded-full h-3 mb-2 overflow-hidden">
+                <div 
+                  className="bg-gradient-to-r from-blue-500 to-cyan-500 h-3 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              
+              {/* Estadísticas */}
+              <div className="flex justify-between text-xs text-gray-400">
+                <span>⚡ {uploadSpeed} reg/seg</span>
+                <span>
+                  {uploadProgress < 100 
+                    ? `⏱️ Estimado: ${Math.max(1, Math.round((100 - uploadProgress) / (uploadSpeed / processedRecords.length)))}s`
+                    : '✅ Completado'
+                  }
+                </span>
+              </div>
+            </div>
+          )}
 
-                {/* Botón para procesar el archivo (deshabilitado en la demo). */}
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => alert('Procesamiento deshabilitado (vista demo)')}
-                    className="px-4 lg:px-6 py-2 lg:py-3 bg-gray-600/50 text-gray-400 rounded-xl cursor-not-allowed text-sm lg:text-base"
-                    disabled
-                  >
-                    Procesar (Demo)
-                  </button>
-                </div>
-              </>
-            )}
+          {/* Botones de acción */}
+          <div className="flex justify-between gap-4">
+            <button
+              onClick={handleReset}
+              disabled={isUploading}
+              className="px-4 lg:px-6 py-2 lg:py-3 bg-gray-600/50 text-white rounded-xl hover:bg-gray-600/70 transition-all text-sm lg:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleConfirmUpload}
+              disabled={isUploading || filePreview.summary.errors === filePreview.rows}
+              className="px-4 lg:px-6 py-2 lg:py-3 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all focus:outline-none focus:ring-2 focus:ring-green-500 text-sm lg:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isUploading ? 'Guardando...' : `Confirmar y Guardar (${filePreview.summary.added + filePreview.summary.updated} registros)`}
+            </button>
           </div>
-        )}
-      </div>
+
+          {error && (
+            <div className="mt-4 p-4 bg-red-500/20 border border-red-500/50 rounded-xl">
+              <p className="text-red-300 text-sm">❌ {error}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Paso 3: Resultado final */}
+      {currentStep === 'result' && uploadResult && (
+        <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 lg:p-6">
+          <div className="text-center mb-6">
+            <div className="text-5xl mb-4">✅</div>
+            <h2 className="text-xl lg:text-2xl font-bold mb-2">Carga Masiva Completada</h2>
+            <p className="text-gray-400 text-sm">
+              Procesado en {(uploadResult.processingTime / 1000).toFixed(2)} segundos
+            </p>
+          </div>
+
+          {/* Resumen final */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 lg:gap-4 mb-6">
+            <div className="bg-blue-500/20 border border-blue-500/50 rounded-xl p-3 lg:p-4 text-center">
+              <div className="text-xl lg:text-2xl font-bold text-blue-400">{uploadResult.totalRecords}</div>
+              <div className="text-xs lg:text-sm text-blue-300">Total Procesados</div>
+            </div>
+            <div className="bg-green-500/20 border border-green-500/50 rounded-xl p-3 lg:p-4 text-center">
+              <div className="text-xl lg:text-2xl font-bold text-green-400">{uploadResult.added}</div>
+              <div className="text-xs lg:text-sm text-green-300">Agregados</div>
+            </div>
+            <div className="bg-amber-500/20 border border-amber-500/50 rounded-xl p-3 lg:p-4 text-center">
+              <div className="text-xl lg:text-2xl font-bold text-amber-400">{uploadResult.updated}</div>
+              <div className="text-xs lg:text-sm text-amber-300">Actualizados</div>
+            </div>
+            <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-3 lg:p-4 text-center">
+              <div className="text-xl lg:text-2xl font-bold text-red-400">{uploadResult.errors}</div>
+              <div className="text-xs lg:text-sm text-red-300">Errores</div>
+            </div>
+          </div>
+
+          {/* Detalle de errores con botón de exportación (mejora #2) */}
+          {uploadResult.errorRecords.length > 0 && (
+            <div className="backdrop-blur-xl bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-red-300">Registros con Errores</h4>
+                <button
+                  onClick={handleExportErrors}
+                  className="text-xs px-3 py-1 bg-red-600/30 border border-red-500/50 rounded-lg hover:bg-red-600/50 transition-all flex items-center gap-1"
+                >
+                  📥 Exportar Errores CSV
+                </button>
+              </div>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {uploadResult.errorRecords.slice(0, 20).map((record, i) => (
+                  <div key={i} className="text-xs bg-black/30 rounded p-2">
+                    <span className="text-red-400 font-semibold">Fila {record.rowNumber}:</span>
+                    <div className="ml-4 mt-1 space-y-1">
+                      {record.errors.map((error, j) => (
+                        <div key={j} className="text-gray-300">
+                          • {error.field}: {error.message}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {uploadResult.errorRecords.length > 20 && (
+                  <p className="text-xs text-gray-400 text-center">
+                    ... y {uploadResult.errorRecords.length - 20} errores más
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Botón para nueva carga */}
+          <div className="flex justify-center">
+            <button
+              onClick={handleReset}
+              className="px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              Nueva Carga
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

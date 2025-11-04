@@ -1,0 +1,16 @@
+instrumento,mercado,periodo,tipo_calificacion,f8,f9,f10,f11,f12,f13,f14,f15,f16,f17,f18,f19,monto,es_oficial
+Acción Válida,BVC,2024-Q1,Dividendos,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.10,0.10,15000,true
+,BVC,2024-Q1,Dividendos,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.10,0.10,15000,true
+Bono Sin Mercado,,2024-Q1,Intereses,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.00,0.00,25000,true
+ETF Sin Periodo,COLCAP,,Capital,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.10,0.10,30000,false
+Fondo Sin Tipo,BVC,2024-Q2,,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.00,0.00,40000,true
+Acción Factores Excedidos,BVC,2024-Q2,Dividendos,0.15,0.15,0.15,0.15,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,50000,true
+Bono Factor Negativo,COLCAP,2024-Q3,Intereses,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,-0.05,0.10,60000,true
+ETF Factor Mayor a 1,BVC,2024-Q3,Capital,0.08,0.08,1.5,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,70000,false
+Fondo Monto Negativo,COLCAP,2024-Q4,Dividendos,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.10,0.10,-5000,true
+Acción Monto Texto,BVC,2024-Q4,Capital,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.10,0.10,INVALIDO,true
+Bono Factor Texto,COLCAP,2024-Q1,Intereses,TEXTO,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.10,0.10,80000,true
+ETF Periodo Inválido,BVC,2024-XX,Capital,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.10,0.10,90000,false
+Fondo Factor Faltante,COLCAP,2024-Q2,Dividendos,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,,0.08,0.10,0.10,100000,true
+Acción Todos los Errores,,,,XXX,XXX,XXX,XXX,XXX,XXX,XXX,XXX,XXX,XXX,XXX,XXX,XXX,true
+Bono Suma 150%,BVC,2024-Q3,Intereses,0.20,0.20,0.20,0.20,0.20,0.20,0.10,0.10,0.10,0.10,0.00,0.00,110000,true

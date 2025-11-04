@@ -16,7 +16,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { NUAM_LOGO_PATH } from '../utils/paths'
@@ -32,6 +32,9 @@ import SettingsSection from './components/SettingsSection'
 // Importación de tipos de datos para una mayor consistencia y seguridad.
 import { Qualification, RecentActivity, FilePreview, MenuItem, ActiveTab } from './components/types'
 
+// Importar funciones para obtener datos reales
+import { getBrokerStats, type BrokerStats } from '../services/firestoreService'
+
 // Componente principal del Dashboard.
 export default function Dashboard() {
   const router = useRouter() // Hook para manejar el enrutamiento.
@@ -40,14 +43,48 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview') // Pestaña activa en la navegación.
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false) // Controla la visibilidad del menú en móviles.
   const [searchTerm, setSearchTerm] = useState('') // Término de búsqueda para las calificaciones.
-  const [selectedFile, setSelectedFile] = useState<File | null>(null) // Archivo seleccionado en la carga masiva.
-  const [filePreview, setFilePreview] = useState<FilePreview | null>(null) // Vista previa del archivo cargado.
   
   // Estados para la sección de configuración.
   const [dateFormat, setDateFormat] = useState('DD/MM/AAAA') // Formato de fecha preferido.
   const [decimalSeparator, setDecimalSeparator] = useState('coma') // Separador de decimales.
   const [pageSize, setPageSize] = useState(10) // Cantidad de elementos por página en las tablas.
-  //
+  
+  // Estados para estadísticas reales
+  const [brokerStats, setBrokerStats] = useState<BrokerStats>({
+    totalQualifications: 0,
+    validatedFactors: 0,
+    reportsGenerated: 0,
+    successRate: 0
+  })
+  const [loadingStats, setLoadingStats] = useState(true)
+
+  // Cargar estadísticas reales al montar el componente
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const stats = await getBrokerStats('broker-demo-001')
+        setBrokerStats(stats)
+      } catch (error) {
+        console.error('Error cargando estadísticas:', error)
+      } finally {
+        setLoadingStats(false)
+      }
+    }
+    loadStats()
+
+    // Listener para recargar estadísticas después de carga masiva (mejora #3)
+    const handleReloadStats = () => {
+      console.log('🔄 Recargando estadísticas del corredor...')
+      setLoadingStats(true)
+      loadStats()
+    }
+
+    window.addEventListener('reloadBrokerStats', handleReloadStats)
+    
+    return () => {
+      window.removeEventListener('reloadBrokerStats', handleReloadStats)
+    }
+  }, [])
 
   // Define los elementos del menú de navegación.
   const menuItems: MenuItem[] = [
@@ -110,10 +147,7 @@ export default function Dashboard() {
       case 'upload':
         return (
           <UploadSection 
-            selectedFile={selectedFile}
-            setSelectedFile={setSelectedFile}
-            filePreview={filePreview}
-            setFilePreview={setFilePreview}
+            brokerId="broker-demo-001"
           />
         )
       case 'reports':
@@ -289,18 +323,38 @@ export default function Dashboard() {
             <p className="text-gray-400 text-sm lg:text-base">Sistema de Gestión de Calificaciones Tributarias</p>
           </header>
 
-          {/* Tarjetas de estadísticas rápidas */}
+          {/* Tarjetas de estadísticas rápidas - DATOS REALES */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
             {[
-              { label: 'Calificaciones Activas', value: '1,234', change: '+12%', color: 'from-orange-600 to-amber-600' },
-              { label: 'Factores Validados', value: '892', change: '+5%', color: 'from-amber-600 to-yellow-600' },
-              { label: 'Reportes Generados', value: '45', change: '+18%', color: 'from-red-600 to-orange-600' },
-              { label: 'Tasa de Éxito', value: '98.5%', change: '+2%', color: 'from-orange-500 to-red-500' }
+              { 
+                label: 'Calificaciones Activas', 
+                value: loadingStats ? '...' : brokerStats.totalQualifications.toLocaleString(), 
+                change: 'Real-time', 
+                color: 'from-orange-600 to-amber-600' 
+              },
+              { 
+                label: 'Factores Validados', 
+                value: loadingStats ? '...' : brokerStats.validatedFactors.toLocaleString(), 
+                change: 'Real-time', 
+                color: 'from-amber-600 to-yellow-600' 
+              },
+              { 
+                label: 'Reportes Generados', 
+                value: loadingStats ? '...' : brokerStats.reportsGenerated.toString(), 
+                change: 'Real-time', 
+                color: 'from-red-600 to-orange-600' 
+              },
+              { 
+                label: 'Tasa de Éxito', 
+                value: loadingStats ? '...' : `${brokerStats.successRate}%`, 
+                change: 'Real-time', 
+                color: 'from-orange-500 to-red-500' 
+              }
             ].map((stat, i) => (
               <div key={i} className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 lg:p-6 hover:bg-white/10 transition-all">
                 <div className="flex justify-between items-start mb-4">
                   <span className="text-gray-400 text-sm">{stat.label}</span>
-                  <span className="text-green-400 text-xs">{stat.change}</span>
+                  <span className="text-blue-400 text-xs">{stat.change}</span>
                 </div>
                 <div className={`text-2xl lg:text-3xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
                   {stat.value}
