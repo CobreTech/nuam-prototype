@@ -5,9 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { NUAM_LOGO_PATH } from '../utils/paths'
-import { auth } from '../firebase/config'
+import { auth, db } from '../firebase/config'
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
+import { doc, getDoc } from 'firebase/firestore'
 import RegisterModal from '../components/RegisterModal'
+import AdminAuthModal from '../components/AdminAuthModal'
+import { getDashboardRoute } from '../utils/rbac'
+import { logLogin } from '../services/auditService'
 
 function LoginContent() {
   const router = useRouter()
@@ -26,6 +30,9 @@ function LoginContent() {
   const [resetLoading, setResetLoading] = useState(false)
   const [resetSent, setResetSent] = useState(false)
   const [resetError, setResetError] = useState('')
+  
+  // Estados para registro con autenticación de admin
+  const [showAdminAuthModal, setShowAdminAuthModal] = useState(false)
   const [showRegisterModal, setShowRegisterModal] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -33,8 +40,30 @@ function LoginContent() {
     setLoading(true)
     setError('')
     try {
-      await signInWithEmailAndPassword(auth, email, password)
-      router.push('/dashboard')
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      
+      // Cargar perfil del usuario desde Firestore para obtener el rol
+      const userDocRef = doc(db, 'users', userCredential.user.uid)
+      const userDocSnap = await getDoc(userDocRef)
+      
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data()
+        const userRole = userData.rol
+        
+        // Registrar evento de login en auditoría
+        await logLogin(
+          userCredential.user.uid,
+          userCredential.user.email || userData.email,
+          `${userData.Nombre} ${userData.Apellido}`
+        )
+        
+        // Redirigir según el rol del usuario
+        const dashboardRoute = getDashboardRoute(userRole)
+        console.log(`✅ Login exitoso | Rol: ${userRole} | Redirigiendo a: ${dashboardRoute}`)
+        router.push(dashboardRoute)
+      } else {
+        setError('Perfil de usuario no encontrado.')
+      }
     } catch (error: unknown) {
       console.error("Error de autenticación:", (error as Error).message)
       setError('Credenciales inválidas. Por favor, inténtalo de nuevo.')
@@ -67,10 +96,24 @@ function LoginContent() {
     setResetError('')
   }
 
-  // Auto-abrir modal de registro con ?register=1
+  // Manejo del flujo de registro con autenticación de admin
+  const handleRegisterClick = () => {
+    console.log('[REGISTER] Solicitando autenticación de administrador para registro')
+    setShowAdminAuthModal(true)
+  }
+
+  const handleAdminAuthSuccess = () => {
+    console.log('[REGISTER] Administrador autenticado, abriendo modal de registro')
+    setShowAdminAuthModal(false)
+    setShowRegisterModal(true)
+  }
+
+  // Auto-abrir modal de auth admin con ?register=1 (para admins que quieran crear usuarios directamente)
   useEffect(() => {
     const shouldOpen = searchParams?.get('register') === '1'
-    if (shouldOpen) setShowRegisterModal(true)
+    if (shouldOpen) {
+      setShowAdminAuthModal(true)
+    }
   }, [searchParams])
 
   console.log("apiKey exists?", !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
@@ -122,7 +165,7 @@ function LoginContent() {
           </button>
           <div className="text-center pt-4 border-t border-white/10">
             <span className="text-gray-400">¿No tienes cuenta? </span>
-            <button type="button" onClick={() => setShowRegisterModal(true)} className="text-orange-400 hover:text-orange-300 bg-transparent border-none p-0 cursor-pointer">Registrarse</button>
+            <button type="button" onClick={handleRegisterClick} className="text-orange-400 hover:text-orange-300 bg-transparent border-none p-0 cursor-pointer">Registrarse</button>
           </div>
         </form>
         <div className="text-center mt-8">
@@ -130,6 +173,14 @@ function LoginContent() {
         </div>
       </div>
 
+      {/* Modal de Autenticación de Administrador (RBAC) */}
+      <AdminAuthModal
+        open={showAdminAuthModal}
+        onClose={() => setShowAdminAuthModal(false)}
+        onSuccess={handleAdminAuthSuccess}
+      />
+
+      {/* Modal de Registro (solo se abre después de auth admin) */}
       {showRegisterModal && (
         <RegisterModal open={showRegisterModal} onClose={() => setShowRegisterModal(false)} />
       )}

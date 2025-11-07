@@ -15,7 +15,8 @@
  * @param {QualificationsSectionProps} props - Propiedades del componente.
  */
 
-import { Qualification, ActiveTab } from './types' // Importa los tipos de datos necesarios.
+import { Qualification, ActiveTab } from './types'
+import Icons from '../../utils/icons' // Importa los tipos de datos necesarios.
 
 // Define la interfaz de las propiedades que espera el componente.
 interface QualificationsSectionProps {
@@ -41,7 +42,7 @@ export default function QualificationsSection({
         // --- ESTADO VACÍO --- 
         // Se muestra solo si no hay calificaciones y no se ha realizado ninguna búsqueda.
         <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 lg:p-8 text-center">
-          <div className="text-4xl lg:text-6xl mb-4">📝</div>
+          <div className="mb-4"><Icons.FileText className="w-16 h-16 lg:w-24 lg:h-24 mx-auto text-gray-400" /></div>
           <h2 className="text-xl lg:text-2xl font-bold mb-4">Aún no hay calificaciones cargadas</h2>
           <p className="text-gray-400 mb-6 text-sm lg:text-base">Comienza cargando tu primer archivo de calificaciones tributarias</p>
           <button

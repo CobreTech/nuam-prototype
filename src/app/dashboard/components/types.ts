@@ -103,7 +103,7 @@ export interface FilePreview {
 export interface MenuItem {
   id: string;      // Identificador único para la pestaña.
   label: string;   // Texto que se mostrará en el menú.
-  icon: string;    // Emoji o ícono para representar la sección.
+  icon: React.ReactNode;    // Componente de icono para representar la sección.
 }
 
 // Define los posibles valores para la pestaña activa en el dashboard.

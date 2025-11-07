@@ -16,9 +16,10 @@
  */
 
 import { useRef, useState } from 'react'
-import { FilePreview, BulkUploadResult, ValidationError, ProcessedRecord } from './types'
-import { processFile, downloadTemplateCSV } from '../../services/fileProcessingService'
-import { processBulkUpload } from '../../services/firestoreService'
+import { FilePreview, ProcessedRecord, BulkUploadResult, TaxQualification } from './types'
+import { processCSVFile } from '../../services/fileProcessingService'
+import { saveBulkQualifications } from '../../services/firestoreService'
+import Icons from '../../utils/icons'
 
 interface UploadSectionProps {
   brokerId?: string; // ID del corredor actual (se obtendría del contexto de autenticación)
@@ -266,7 +267,8 @@ export default function UploadSection({ brokerId = 'broker-demo-001' }: UploadSe
                 onClick={() => setShowTemplateMenu(!showTemplateMenu)}
                 className="text-xs lg:text-sm px-3 py-2 bg-blue-600/20 border border-blue-500/50 rounded-lg hover:bg-blue-600/30 transition-all flex items-center gap-2"
               >
-                📥 Descargar Plantilla
+                <Icons.Download className="w-4 h-4" />
+                Descargar Plantilla
                 <span className="text-xs">▼</span>
               </button>
               
@@ -276,7 +278,7 @@ export default function UploadSection({ brokerId = 'broker-demo-001' }: UploadSe
                     onClick={() => handleDownloadTemplate('normal')}
                     className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors border-b border-white/10"
                   >
-                    <div className="font-semibold text-sm">📄 Plantilla Normal</div>
+                    <div className="font-semibold text-sm flex items-center gap-2"><Icons.File className="w-4 h-4" /> Plantilla Normal</div>
                     <div className="text-xs text-gray-400">8 registros de ejemplo</div>
                   </button>
                   
@@ -284,7 +286,7 @@ export default function UploadSection({ brokerId = 'broker-demo-001' }: UploadSe
                     onClick={() => handleDownloadTemplate('errors')}
                     className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors border-b border-white/10"
                   >
-                    <div className="font-semibold text-sm">⚠️ Plantilla con Errores</div>
+                    <div className="font-semibold text-sm flex items-center gap-2"><Icons.Warning className="w-4 h-4" /> Plantilla con Errores</div>
                     <div className="text-xs text-gray-400">15 registros para probar validaciones</div>
                   </button>
                   
@@ -292,7 +294,7 @@ export default function UploadSection({ brokerId = 'broker-demo-001' }: UploadSe
                     onClick={() => handleDownloadTemplate('5000')}
                     className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors"
                   >
-                    <div className="font-semibold text-sm">🚀 Plantilla 5,000 Registros</div>
+                    <div className="font-semibold text-sm flex items-center gap-2"><Icons.TrendingUp className="w-4 h-4" /> Plantilla 5,000 Registros</div>
                     <div className="text-xs text-gray-400">Prueba de rendimiento (0.67 MB)</div>
                   </button>
                 </div>
@@ -313,7 +315,7 @@ export default function UploadSection({ brokerId = 'broker-demo-001' }: UploadSe
             onDrop={handleDrop}
             className="border-2 border-dashed border-white/30 rounded-xl p-6 lg:p-8 text-center hover:border-orange-500/50 transition-colors"
           >
-            <div className="text-4xl lg:text-6xl mb-4">📤</div>
+            <div className="mb-4"><Icons.Upload className="w-12 h-12 lg:w-16 lg:h-16 mx-auto text-orange-400" /></div>
             <h3 className="text-base lg:text-lg font-semibold mb-2">Arrastra tu archivo aquí</h3>
             <p className="text-gray-400 mb-4 text-sm lg:text-base">o haz clic para seleccionar</p>
             <input
@@ -537,7 +539,8 @@ export default function UploadSection({ brokerId = 'broker-demo-001' }: UploadSe
                   onClick={handleExportErrors}
                   className="text-xs px-3 py-1 bg-red-600/30 border border-red-500/50 rounded-lg hover:bg-red-600/50 transition-all flex items-center gap-1"
                 >
-                  📥 Exportar Errores CSV
+                  <Icons.Download className="w-4 h-4" />
+                  Exportar Errores CSV
                 </button>
               </div>
               <div className="space-y-2 max-h-64 overflow-y-auto">

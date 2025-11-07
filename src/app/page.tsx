@@ -15,17 +15,34 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { NUAM_LOGO_PATH } from './utils/paths'
 import RegisterModal from './components/RegisterModal'
+import AdminAuthModal from './components/AdminAuthModal'
+import Icons from './utils/icons'
 
 export default function Home() {
   // Estados para controlar la UI y animaciones
   const [mounted, setMounted] = useState(false) // Controla si el componente ya se montó
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false) // Estado del menú móvil
   const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set()) // Secciones visibles para animaciones
+  
+  // Estados para registro con autenticación de admin (RBAC)
+  const [showAdminAuthModal, setShowAdminAuthModal] = useState(false)
   const [showRegisterModal, setShowRegisterModal] = useState(false)
   
   // Referencias para el observer de intersección
   const featuresRef = useRef<HTMLElement>(null)
   const statsRef = useRef<HTMLElement>(null)
+
+  // Manejo del flujo de registro con autenticación de admin
+  const handleRegisterClick = () => {
+    console.log('[REGISTER] Solicitando autenticación de administrador para registro')
+    setShowAdminAuthModal(true)
+  }
+
+  const handleAdminAuthSuccess = () => {
+    console.log('[REGISTER] Administrador autenticado, abriendo modal de registro')
+    setShowAdminAuthModal(false)
+    setShowRegisterModal(true)
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -195,7 +212,7 @@ export default function Home() {
               </Link>
               <button
                 type="button"
-                onClick={() => setShowRegisterModal(true)}
+                onClick={handleRegisterClick}
                 className="px-8 py-4 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl hover:bg-white/20 transition-all hover:border-white/40 text-center"
               >
                 Registrar Usuario
@@ -212,6 +229,14 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Modal de Autenticación de Administrador (RBAC) */}
+      <AdminAuthModal
+        open={showAdminAuthModal}
+        onClose={() => setShowAdminAuthModal(false)}
+        onSuccess={handleAdminAuthSuccess}
+      />
+
+      {/* Modal de Registro (solo se abre después de auth admin) */}
       {showRegisterModal && (
         <RegisterModal open={showRegisterModal} onClose={() => setShowRegisterModal(false)} />
       )}
@@ -236,17 +261,17 @@ export default function Home() {
             {
               title: 'Carga Masiva',
               description: 'Importa archivos CSV/Excel con validación automática de datos tributarios',
-              icon: '📊'
+              Icon: Icons.BarChart
             },
             {
               title: 'Seguridad Garantizada',
               description: 'Datos privados por corredora con cifrado end-to-end y respaldos automáticos',
-              icon: '🔒'
+              Icon: Icons.Lock
             },
             {
               title: 'Reportes Automáticos',
               description: 'Genera declaraciones juradas y reportes tributarios con un clic',
-              icon: '📈'
+              Icon: Icons.TrendingUp
             }
           ].map((feature, i) => (
             <div 
@@ -258,8 +283,8 @@ export default function Home() {
               }`}
               style={{ animationDelay: `${i * 200}ms` }}
             >
-              <div className="text-4xl mb-4 animate-bounce-slow" style={{ animationDelay: `${i * 100}ms` }}>
-                {feature.icon}
+              <div className="mb-4 animate-bounce-slow" style={{ animationDelay: `${i * 100}ms` }}>
+                <feature.Icon className="w-12 h-12 mx-auto text-orange-400" />
               </div>
               <h3 className="text-2xl font-bold mb-4">{feature.title}</h3>
               <p className="text-gray-300">{feature.description}</p>

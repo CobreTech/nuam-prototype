@@ -198,7 +198,7 @@ export async function processBulkUpload(
   onProgress?: (current: number, total: number, phase: string) => void
 ): Promise<BulkUploadResult> {
   const startTime = Date.now();
-  console.log(`🚀 Iniciando carga masiva de ${processedRecords.length} registros...`);
+  console.log(`[BULK UPLOAD] Iniciando carga masiva de ${processedRecords.length} registros...`);
   
   let added = 0;
   let updated = 0;
@@ -208,7 +208,7 @@ export async function processBulkUpload(
 
   try {
     // PASO 1: Obtener TODOS los registros existentes del corredor en UNA SOLA consulta
-    console.log('📥 Obteniendo registros existentes...');
+    console.log('[BULK UPLOAD] Obteniendo registros existentes...');
     onProgress?.(0, processedRecords.length, 'Cargando registros existentes...');
     
     const existingQuery = query(
@@ -296,23 +296,23 @@ export async function processBulkUpload(
         batches.push(currentBatch);
         currentBatch = writeBatch(db);
         operationsInBatch = 0;
-        console.log(`📦 Batch ${batches.length} preparado (${BATCH_SIZE} operaciones)`);
+        console.log(`[BATCH] Batch ${batches.length} preparado (${BATCH_SIZE} operaciones)`);
       }
     }
 
     // Agregar el último batch si tiene operaciones
     if (operationsInBatch > 0) {
       batches.push(currentBatch);
-      console.log(`📦 Batch ${batches.length} preparado (${operationsInBatch} operaciones)`);
+      console.log(`[BATCH] Batch ${batches.length} preparado (${operationsInBatch} operaciones)`);
     }
 
     // PASO 3: Ejecutar todos los batches en PARALELO
-    console.log(`🔥 Ejecutando ${batches.length} batches en paralelo...`);
+    console.log(`[BATCH] Ejecutando ${batches.length} batches en paralelo...`);
     onProgress?.(processedRecords.length, processedRecords.length, 'Guardando en base de datos...');
     
     let completedBatches = 0;
     await Promise.all(batches.map(async (batch, index) => {
-      console.log(`  ⏳ Ejecutando batch ${index + 1}/${batches.length}...`);
+      console.log(`[BATCH] Ejecutando batch ${index + 1}/${batches.length}...`);
       await batch.commit();
       completedBatches++;
       onProgress?.(
@@ -323,8 +323,8 @@ export async function processBulkUpload(
     }));
 
     const processingTime = Date.now() - startTime;
-    console.log(`✅ Carga masiva completada en ${(processingTime / 1000).toFixed(2)}s`);
-    console.log(`  📊 Agregados: ${added} | Actualizados: ${updated} | Errores: ${errors}`);
+    console.log(`[SUCCESS] Carga masiva completada en ${(processingTime / 1000).toFixed(2)}s`);
+    console.log(`[STATS] Agregados: ${added} | Actualizados: ${updated} | Errores: ${errors}`);
 
     return {
       totalRecords: processedRecords.length,

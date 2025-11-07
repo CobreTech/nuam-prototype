@@ -1,0 +1,341 @@
+/**
+ * @file auditService.ts
+ * @description Servicio de Auditoría del Sistema
+ * 
+ * Registra automáticamente todos los eventos importantes del sistema
+ * para cumplir con requisitos de trazabilidad y seguridad (ISO 27001)
+ */
+
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { db } from '../firebase/config';
+
+/**
+ * Tipos de acciones auditables
+ */
+export type AuditAction = 
+  | 'LOGIN' 
+  | 'LOGOUT' 
+  | 'CREATE' 
+  | 'UPDATE' 
+  | 'DELETE' 
+  | 'UPLOAD'
+  | 'EXPORT'
+  | 'PASSWORD_RESET';
+
+/**
+ * Tipos de recursos auditables
+ */
+export type AuditResource = 
+  | 'system' 
+  | 'user' 
+  | 'qualification' 
+  | 'report';
+
+/**
+ * Interface para un log de auditoría
+ */
+export interface AuditLog {
+  timestamp: Date;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  action: AuditAction;
+  resource: AuditResource;
+  resourceId?: string;
+  details: string;
+  changes?: {
+    before?: any;
+    after?: any;
+  };
+  metadata?: {
+    [key: string]: any;
+  };
+}
+
+/**
+ * Registra un evento de auditoría en Firestore
+ * 
+ * @param log - Objeto con la información del evento
+ * @returns Promise<string> - ID del documento creado
+ */
+export async function logAuditEvent(log: AuditLog): Promise<string> {
+  try {
+    const auditLogData = {
+      ...log,
+      timestamp: Timestamp.fromDate(log.timestamp),
+    };
+
+    const docRef = await addDoc(collection(db, 'auditLogs'), auditLogData);
+    
+    console.log('[AUDIT] Log registered:', {
+      action: log.action,
+      resource: log.resource,
+      user: log.userEmail,
+    });
+
+    return docRef.id;
+  } catch (error) {
+    console.error('[AUDIT ERROR] Error registrando audit log:', error);
+    // No lanzar error para no interrumpir el flujo principal
+    return '';
+  }
+}
+
+/**
+ * Registra un evento de login
+ */
+export async function logLogin(userId: string, userEmail: string, userName: string) {
+  return logAuditEvent({
+    timestamp: new Date(),
+    userId,
+    userEmail,
+    userName,
+    action: 'LOGIN',
+    resource: 'system',
+    details: 'Inicio de sesión exitoso',
+  });
+}
+
+/**
+ * Registra un evento de logout
+ */
+export async function logLogout(userId: string, userEmail: string, userName: string) {
+  return logAuditEvent({
+    timestamp: new Date(),
+    userId,
+    userEmail,
+    userName,
+    action: 'LOGOUT',
+    resource: 'system',
+    details: 'Cierre de sesión',
+  });
+}
+
+/**
+ * Registra la creación de un usuario
+ */
+export async function logUserCreated(
+  adminId: string,
+  adminEmail: string,
+  adminName: string,
+  newUserId: string,
+  newUserData: { nombre: string; apellido: string; email: string; rol: string }
+) {
+  return logAuditEvent({
+    timestamp: new Date(),
+    userId: adminId,
+    userEmail: adminEmail,
+    userName: adminName,
+    action: 'CREATE',
+    resource: 'user',
+    resourceId: newUserId,
+    details: `Nuevo usuario creado: ${newUserData.nombre} ${newUserData.apellido} (${newUserData.rol})`,
+    changes: {
+      after: newUserData,
+    },
+  });
+}
+
+/**
+ * Registra la actualización de un usuario
+ */
+export async function logUserUpdated(
+  adminId: string,
+  adminEmail: string,
+  adminName: string,
+  targetUserId: string,
+  before: any,
+  after: any
+) {
+  return logAuditEvent({
+    timestamp: new Date(),
+    userId: adminId,
+    userEmail: adminEmail,
+    userName: adminName,
+    action: 'UPDATE',
+    resource: 'user',
+    resourceId: targetUserId,
+    details: `Usuario actualizado: ${after.Nombre} ${after.Apellido}`,
+    changes: {
+      before,
+      after,
+    },
+  });
+}
+
+/**
+ * Registra la desactivación/activación de un usuario
+ */
+export async function logUserToggleActive(
+  adminId: string,
+  adminEmail: string,
+  adminName: string,
+  targetUserId: string,
+  targetUserName: string,
+  isActive: boolean
+) {
+  return logAuditEvent({
+    timestamp: new Date(),
+    userId: adminId,
+    userEmail: adminEmail,
+    userName: adminName,
+    action: 'UPDATE',
+    resource: 'user',
+    resourceId: targetUserId,
+    details: `Usuario ${isActive ? 'activado' : 'desactivado'}: ${targetUserName}`,
+    metadata: {
+      activo: isActive,
+    },
+  });
+}
+
+/**
+ * Registra el reseteo de contraseña
+ */
+export async function logPasswordReset(
+  adminId: string,
+  adminEmail: string,
+  adminName: string,
+  targetUserId: string,
+  targetUserEmail: string
+) {
+  return logAuditEvent({
+    timestamp: new Date(),
+    userId: adminId,
+    userEmail: adminEmail,
+    userName: adminName,
+    action: 'PASSWORD_RESET',
+    resource: 'user',
+    resourceId: targetUserId,
+    details: `Contraseña restablecida para: ${targetUserEmail}`,
+  });
+}
+
+/**
+ * Registra una carga masiva de calificaciones
+ */
+export async function logBulkUpload(
+  userId: string,
+  userEmail: string,
+  userName: string,
+  recordCount: number,
+  successCount: number,
+  errorCount: number
+) {
+  return logAuditEvent({
+    timestamp: new Date(),
+    userId,
+    userEmail,
+    userName,
+    action: 'UPLOAD',
+    resource: 'qualification',
+    details: `Carga masiva: ${successCount} exitosos, ${errorCount} errores de ${recordCount} total`,
+    metadata: {
+      totalRecords: recordCount,
+      successCount,
+      errorCount,
+    },
+  });
+}
+
+/**
+ * Registra la creación de una calificación
+ */
+export async function logQualificationCreated(
+  userId: string,
+  userEmail: string,
+  userName: string,
+  qualificationId: string,
+  qualificationData: any
+) {
+  return logAuditEvent({
+    timestamp: new Date(),
+    userId,
+    userEmail,
+    userName,
+    action: 'CREATE',
+    resource: 'qualification',
+    resourceId: qualificationId,
+    details: `Calificación creada: ${qualificationData.instrument || 'N/A'}`,
+    changes: {
+      after: qualificationData,
+    },
+  });
+}
+
+/**
+ * Registra la actualización de una calificación
+ */
+export async function logQualificationUpdated(
+  userId: string,
+  userEmail: string,
+  userName: string,
+  qualificationId: string,
+  before: any,
+  after: any
+) {
+  return logAuditEvent({
+    timestamp: new Date(),
+    userId,
+    userEmail,
+    userName,
+    action: 'UPDATE',
+    resource: 'qualification',
+    resourceId: qualificationId,
+    details: `Calificación actualizada: ${after.instrument || 'N/A'}`,
+    changes: {
+      before,
+      after,
+    },
+  });
+}
+
+/**
+ * Registra la eliminación de una calificación
+ */
+export async function logQualificationDeleted(
+  userId: string,
+  userEmail: string,
+  userName: string,
+  qualificationId: string,
+  qualificationData: any
+) {
+  return logAuditEvent({
+    timestamp: new Date(),
+    userId,
+    userEmail,
+    userName,
+    action: 'DELETE',
+    resource: 'qualification',
+    resourceId: qualificationId,
+    details: `Calificación eliminada: ${qualificationData.instrument || 'N/A'}`,
+    changes: {
+      before: qualificationData,
+    },
+  });
+}
+
+/**
+ * Registra la exportación de datos
+ */
+export async function logDataExport(
+  userId: string,
+  userEmail: string,
+  userName: string,
+  exportType: string,
+  recordCount: number
+) {
+  return logAuditEvent({
+    timestamp: new Date(),
+    userId,
+    userEmail,
+    userName,
+    action: 'EXPORT',
+    resource: 'report',
+    details: `Exportación de ${exportType}: ${recordCount} registros`,
+    metadata: {
+      exportType,
+      recordCount,
+    },
+  });
+}

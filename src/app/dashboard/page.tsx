@@ -14,19 +14,18 @@
  * - Uso de datos simulados (mock data) para demostración.
  */
 
-'use client'
-
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
-import { motion, AnimatePresence } from 'framer-motion'
-import { NUAM_LOGO_PATH } from '../utils/paths'
-import { useRouter } from 'next/navigation' // Hook de Next.js para la navegación programática.
-
-// Importación de las sub-secciones del dashboard.
+import { useRouter } from 'next/navigation'
+import { auth, db } from '../firebase/config'
+import { signOut, onAuthStateChanged } from 'firebase/auth'
+import { collection, query, where, getDocs } from 'firebase/firestore'
 import OverviewSection from './components/OverviewSection'
 import QualificationsSection from './components/QualificationsSection'
 import UploadSection from './components/UploadSection'
 import ReportsSection from './components/ReportsSection'
+import Image from 'next/image'
+import { NUAM_LOGO_PATH } from '../utils/paths'
+import Icons from '../utils/icons'
 import SettingsSection from './components/SettingsSection'
 
 // Importación de tipos de datos para una mayor consistencia y seguridad.
@@ -74,7 +73,7 @@ export default function Dashboard() {
 
     // Listener para recargar estadísticas después de carga masiva (mejora #3)
     const handleReloadStats = () => {
-      console.log('🔄 Recargando estadísticas del corredor...')
+      console.log('[STATS] Recargando estadísticas del corredor...')
       setLoadingStats(true)
       loadStats()
     }
@@ -88,11 +87,11 @@ export default function Dashboard() {
 
   // Define los elementos del menú de navegación.
   const menuItems: MenuItem[] = [
-    { id: 'overview', label: 'Resumen General', icon: '📊' },
-    { id: 'qualifications', label: 'Calificaciones', icon: '📝' },
-    { id: 'upload', label: 'Carga Masiva', icon: '📤' },
-    { id: 'reports', label: 'Reportes', icon: '📈' },
-    { id: 'settings', label: 'Configuración', icon: '⚙️' }
+    { id: 'overview', label: 'Resumen General', icon: <Icons.Dashboard className="w-5 h-5" /> },
+    { id: 'qualifications', label: 'Calificaciones', icon: <Icons.FileText className="w-5 h-5" /> },
+    { id: 'upload', label: 'Carga Masiva', icon: <Icons.Upload className="w-5 h-5" /> },
+    { id: 'reports', label: 'Reportes', icon: <Icons.BarChart className="w-5 h-5" /> },
+    { id: 'settings', label: 'Configuración', icon: <Icons.Settings className="w-5 h-5" /> }
   ]
 
   // --- DATOS SIMULADOS (MOCK DATA) ---

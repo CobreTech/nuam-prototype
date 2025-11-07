@@ -18,7 +18,8 @@
  * @param {(tab: ActiveTab) => void} props.setActiveTab - Función para cambiar la pestaña activa en el dashboard principal.
  */
 
-import { Qualification, RecentActivity, ActiveTab } from './types' // Importa los tipos de datos necesarios.
+import { Qualification, RecentActivity, ActiveTab } from './types'
+import Icons from '../../utils/icons' // Importa los tipos de datos necesarios.
 
 // Define la interfaz de las propiedades que espera el componente.
 interface OverviewSectionProps {
@@ -48,7 +49,7 @@ export default function OverviewSection({
               className="p-4 bg-gradient-to-r from-orange-600/20 to-amber-600/20 border border-orange-500/50 rounded-xl hover:from-orange-600/30 hover:to-amber-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-orange-500"
               aria-label="Ir a Carga Masiva"
             >
-              <div className="text-2xl mb-2">📤</div>
+              <div className="mb-2"><Icons.Upload className="w-8 h-8 mx-auto" /></div>
               <div className="font-semibold">Carga Masiva</div>
               <div className="text-xs text-gray-400">CSV/Excel</div>
             </button>
@@ -57,7 +58,7 @@ export default function OverviewSection({
               className="p-4 bg-gradient-to-r from-amber-600/20 to-yellow-600/20 border border-amber-500/50 rounded-xl hover:from-amber-600/30 hover:to-yellow-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-amber-500"
               aria-label="Ir a Reportes"
             >
-              <div className="text-2xl mb-2">📊</div>
+              <div className="mb-2"><Icons.BarChart className="w-8 h-8 mx-auto" /></div>
               <div className="font-semibold">Generar Reporte</div>
               <div className="text-xs text-gray-400">DJ1948</div>
             </button>
@@ -66,7 +67,7 @@ export default function OverviewSection({
               className="p-4 bg-gradient-to-r from-red-600/20 to-orange-600/20 border border-red-500/50 rounded-xl hover:from-red-600/30 hover:to-orange-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-red-500"
               aria-label="Ir a Calificaciones"
             >
-              <div className="text-2xl mb-2">✏️</div>
+              <div className="mb-2"><Icons.FileText className="w-8 h-8 mx-auto" /></div>
               <div className="font-semibold">Ver Calificaciones</div>
               <div className="text-xs text-gray-400">Gestión</div>
             </button>
@@ -75,7 +76,7 @@ export default function OverviewSection({
               className="p-4 bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-400/50 rounded-xl hover:from-orange-500/30 hover:to-amber-500/30 transition-all focus:outline-none focus:ring-2 focus:ring-orange-400"
               aria-label="Buscar Calificaciones"
             >
-              <div className="text-2xl mb-2">🔍</div>
+              <div className="mb-2"><Icons.Search className="w-8 h-8 mx-auto" /></div>
               <div className="font-semibold">Buscar</div>
               <div className="text-xs text-gray-400">Calificaciones</div>
             </button>
@@ -140,7 +141,7 @@ export default function OverviewSection({
 
         {/* Tarjeta de Consejo del Día */}
         <div className="backdrop-blur-xl bg-gradient-to-r from-orange-600/20 to-amber-600/20 border border-orange-500/50 rounded-2xl p-4 lg:p-6">
-          <h3 className="font-bold mb-2">💡 Consejo del día</h3>
+          <h3 className="font-bold mb-2 flex items-center gap-2"><Icons.Info className="w-5 h-5" /> Consejo del día</h3>
           <p className="text-sm text-gray-300">
             Recuerda validar que la suma de factores 8-19 no supere 1.0 para cumplir con la normativa tributaria.
           </p>

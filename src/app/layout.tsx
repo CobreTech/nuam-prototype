@@ -13,6 +13,7 @@
 import './globals.css' // Importa los estilos globales de la aplicación.
 import type { Metadata } from "next"; // Importa el tipo Metadata para definir los metadatos de la página.
 import { Inter } from "next/font/google"; // Importa la fuente 'Inter' de Google Fonts.
+import { AuthProvider } from './context/AuthContext'; // Provider de autenticación RBAC
 
 // Configura la fuente 'Inter' con el subconjunto 'latin'.
 const inter = Inter({ subsets: ["latin"] });
@@ -34,8 +35,10 @@ export default function RootLayout({
     <html lang="es" className="dark">
       {/* Aplica la clase de la fuente 'Inter' y los estilos de fondo y texto base al body. */}
       <body className={`${inter.className} bg-nuam-dark text-nuam-text-primary`}>
-        {/* Renderiza el contenido de la página actual. */}
-        {children}
+        {/* Provider de autenticación RBAC - envuelve toda la aplicación */}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

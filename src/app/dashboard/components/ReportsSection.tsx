@@ -13,6 +13,8 @@
  * - Los botones de generación de PDF están deshabilitados para la demostración y muestran una alerta.
  */
 
+import Icons from '../../utils/icons'
+
 export default function ReportsSection() {
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -62,7 +64,7 @@ export default function ReportsSection() {
               <h3 className="text-sm lg:text-lg font-semibold">Calificaciones por Evento de Capital</h3>
               <p className="text-xs lg:text-sm text-gray-400">Reporte detallado de calificaciones agrupadas por evento</p>
             </div>
-            <div className="text-xl lg:text-2xl">📊</div>
+            <Icons.BarChart className="w-8 h-8 lg:w-10 lg:h-10 text-orange-400" />
           </div>
           {/* Botón deshabilitado para la demo. */}
           <button
@@ -80,7 +82,7 @@ export default function ReportsSection() {
               <h3 className="text-sm lg:text-lg font-semibold">Resumen por Período</h3>
               <p className="text-xs lg:text-sm text-gray-400">Consolidado trimestral de calificaciones tributarias</p>
             </div>
-            <div className="text-xl lg:text-2xl">📈</div>
+            <Icons.TrendingUp className="w-8 h-8 lg:w-10 lg:h-10 text-green-400" />
           </div>
           <button
             onClick={() => alert('Pendiente de implementación')}
@@ -97,7 +99,7 @@ export default function ReportsSection() {
               <h3 className="text-sm lg:text-lg font-semibold">Factores por Instrumento</h3>
               <p className="text-xs lg:text-sm text-gray-400">Análisis de factores F8-F19 por tipo de instrumento</p>
             </div>
-            <div className="text-xl lg:text-2xl">📋</div>
+            <Icons.ClipboardList className="w-8 h-8 lg:w-10 lg:h-10 text-blue-400" />
           </div>
           <button
             onClick={() => alert('Pendiente de implementación')}
@@ -114,7 +116,7 @@ export default function ReportsSection() {
               <h3 className="text-sm lg:text-lg font-semibold">Reporte DJ1948</h3>
               <p className="text-xs lg:text-sm text-gray-400">Declaración jurada según formato oficial</p>
             </div>
-            <div className="text-xl lg:text-2xl">📄</div>
+            <Icons.File className="w-8 h-8 lg:w-10 lg:h-10 text-purple-400" />
           </div>
           <button
             onClick={() => alert('Pendiente de implementación')}
