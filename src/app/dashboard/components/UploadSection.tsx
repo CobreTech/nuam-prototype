@@ -17,8 +17,8 @@
 
 import { useRef, useState } from 'react'
 import { FilePreview, ProcessedRecord, BulkUploadResult, TaxQualification } from './types'
-import { processCSVFile } from '../../services/fileProcessingService'
-import { saveBulkQualifications } from '../../services/firestoreService'
+import { processFile } from '../../services/fileProcessingService'
+import { processBulkUpload } from '../../services/firestoreService'
 import Icons from '../../utils/icons'
 
 interface UploadSectionProps {
@@ -56,13 +56,13 @@ export default function UploadSection({ brokerId = 'broker-demo-001' }: UploadSe
       setProcessedRecords(records)
 
       // Calcular estadísticas para la vista previa
-      const successRecords = records.filter(r => r.status === 'success' || r.status === 'updated')
-      const errorRecords = records.filter(r => r.status === 'error')
-      const toBeUpdated = records.filter(r => r.isDuplicate).length
+      const successRecords = records.filter((r: ProcessedRecord) => r.status === 'success' || r.status === 'updated')
+      const errorRecords = records.filter((r: ProcessedRecord) => r.status === 'error')
+      const toBeUpdated = records.filter((r: ProcessedRecord) => r.isDuplicate).length
       const toBeAdded = successRecords.length - toBeUpdated
 
       // Generar vista previa con TODOS los registros exitosos (con scroll)
-      const previewData = successRecords.map(record => {
+      const previewData = successRecords.map((record: ProcessedRecord) => {
         if (!record.data) return []
         return [
           record.data.instrument,
@@ -84,7 +84,7 @@ export default function UploadSection({ brokerId = 'broker-demo-001' }: UploadSe
           updated: toBeUpdated,
           errors: errorRecords.length
         },
-        validationErrors: errorRecords.flatMap(r => r.errors).slice(0, 10) // Primeros 10 errores
+        validationErrors: errorRecords.flatMap((r: ProcessedRecord) => r.errors).slice(0, 10) // Primeros 10 errores
       }
 
       setFilePreview(preview)

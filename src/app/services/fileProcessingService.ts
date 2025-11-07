@@ -117,11 +117,11 @@ export async function processCSVFile(
         // Normalizar nombres de columnas
         return header.toLowerCase().trim().replace(/\s+/g, '_');
       },
-      complete: (results) => {
+      complete: (results: Papa.ParseResult<FileRow>) => {
         try {
           const processedRecords: ProcessedRecord[] = [];
 
-          results.data.forEach((row, index) => {
+          results.data.forEach((row: FileRow, index: number) => {
             const rowNumber = index + 2; // +2 porque index es 0-based y la primera fila es el header
             
             try {
@@ -169,7 +169,7 @@ export async function processCSVFile(
           reject(error);
         }
       },
-      error: (error) => {
+      error: (error: Error) => {
         reject(new Error(`Error al parsear CSV: ${error.message}`));
       }
     });
